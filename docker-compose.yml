@@ -1,0 +1,28 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tribe
+      POSTGRES_PASSWORD: tribe
+      POSTGRES_DB: tribe_casts
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./src/storage/migrations:/docker-entrypoint-initdb.d
+
+  cast-server:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      SOLANA_CLUSTER: devnet
+      SOLANA_RPC_URL: https://api.devnet.solana.com
+      DATABASE_URL: postgresql://tribe:tribe@postgres:5432/tribe_casts
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
