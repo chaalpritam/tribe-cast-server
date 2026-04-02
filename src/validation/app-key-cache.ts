@@ -12,6 +12,15 @@ interface CachedAppKey {
 
 const TTL_MS = 60_000; // 60 second cache TTL
 
+// Anchor account layout for AppKeyRecord after 8-byte discriminator:
+// u64 fid (8) + Pubkey app_pubkey (32) + u8 scope (1) + i64 created_at (8) + i64 expires_at (8) + bool revoked (1) + u8 bump (1)
+const DISCRIMINATOR_LEN = 8;
+const FID_OFFSET = DISCRIMINATOR_LEN;
+const SCOPE_OFFSET = FID_OFFSET + 8 + 32; // after fid + app_pubkey
+const EXPIRES_AT_OFFSET = SCOPE_OFFSET + 1 + 8; // after scope + created_at
+const REVOKED_OFFSET = EXPIRES_AT_OFFSET + 8;
+const MIN_ACCOUNT_LEN = REVOKED_OFFSET + 1;
+
 /**
  * In-memory cache of app keys from Solana.
  * Avoids RPC call per message validation.
@@ -45,8 +54,7 @@ class AppKeyCache {
   }
 
   /**
-   * Fetch an app key record from on-chain.
-   * TODO: Subscribe to program events for proactive invalidation.
+   * Fetch an app key record from on-chain and deserialize Anchor account data.
    */
   private async fetchFromChain(fid: string, signerHex: string): Promise<CachedAppKey | null> {
     try {
@@ -60,16 +68,19 @@ class AppKeyCache {
       );
 
       const accountInfo = await this.connection.getAccountInfo(pda);
-      if (!accountInfo) return null;
+      if (!accountInfo || accountInfo.data.length < MIN_ACCOUNT_LEN) return null;
 
-      // TODO: Deserialize AppKeyRecord from account data using IDL
-      // For now, return a placeholder that indicates the key exists
+      const data = accountInfo.data;
+      const scope = data[SCOPE_OFFSET];
+      const expiresAt = Number(data.readBigInt64LE(EXPIRES_AT_OFFSET));
+      const revoked = data[REVOKED_OFFSET] !== 0;
+
       return {
         fid,
         appPubkey: signerHex,
-        scope: 0,
-        revoked: false,
-        expiresAt: 0,
+        scope,
+        revoked,
+        expiresAt,
         cachedAt: Date.now(),
       };
     } catch {

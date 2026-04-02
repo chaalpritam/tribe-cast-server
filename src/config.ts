@@ -5,6 +5,7 @@ export const config = {
   solanaCluster: process.env.SOLANA_CLUSTER || "devnet",
   solanaRpcUrl: process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com",
   databaseUrl: process.env.DATABASE_URL || "postgresql://tribe:tribe@localhost:5432/tribe_casts",
+  maxCastsPerFid: parseInt(process.env.MAX_CASTS_PER_FID || "10000", 10),
   rateLimitCastsPerMin: parseInt(process.env.RATE_LIMIT_CASTS_PER_MIN || "10", 10),
   rateLimitReactionsPerMin: parseInt(process.env.RATE_LIMIT_REACTIONS_PER_MIN || "60", 10),
   programIds: {

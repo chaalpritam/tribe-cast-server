@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { config } from "../config";
 
 interface InsertCastParams {
   hash: string;
@@ -28,6 +29,34 @@ class CastStore {
         params.timestamp,
       ]
     );
+  }
+
+  async deleteCast(hash: string): Promise<void> {
+    await db.query(
+      `UPDATE casts SET deleted = true WHERE hash = $1`,
+      [hash]
+    );
+  }
+
+  async hashExists(hash: string): Promise<boolean> {
+    const result = await db.query(
+      `SELECT 1 FROM casts WHERE hash = $1 LIMIT 1`,
+      [hash]
+    );
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getCastCountByFid(fid: string): Promise<number> {
+    const result = await db.query(
+      `SELECT COUNT(*)::int AS count FROM casts WHERE fid = $1 AND deleted = false`,
+      [fid]
+    );
+    return result.rows[0]?.count ?? 0;
+  }
+
+  async isStorageLimitReached(fid: string): Promise<boolean> {
+    const count = await this.getCastCountByFid(fid);
+    return count >= config.maxCastsPerFid;
   }
 
   async getCastsByFid(fid: string, limit: number, cursor?: string) {
