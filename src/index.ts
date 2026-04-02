@@ -1,7 +1,9 @@
 import { buildServer } from "./server";
 import { config } from "./config";
+import { runMigrations } from "./storage/db";
 
 async function main() {
+  await runMigrations();
   const server = await buildServer();
 
   try {
