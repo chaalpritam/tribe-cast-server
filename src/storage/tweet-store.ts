@@ -160,6 +160,18 @@ class TweetStore {
     return result.rows[0]?.count ?? 0;
   }
 
+  async searchTweets(query: string, limit: number) {
+    const result = await db.query(
+      `SELECT t.hash, t.tid, t.text, t.parent_hash, t.channel_id, t.mentions, t.embeds, t.timestamp,
+              (SELECT COUNT(*)::int FROM tweets r WHERE r.parent_hash = t.hash AND r.deleted = false) as reply_count
+       FROM tweets t
+       WHERE t.deleted = false AND t.text ILIKE $1
+       ORDER BY t.timestamp DESC LIMIT $2`,
+      [`%${query}%`, limit]
+    );
+    return result.rows;
+  }
+
   async getTweetByHash(hash: string) {
     const result = await db.query(
       `SELECT hash, tid, text, parent_hash, channel_id, mentions, embeds, timestamp
