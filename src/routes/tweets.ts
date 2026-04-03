@@ -43,6 +43,16 @@ export async function tweetRoutes(server: FastifyInstance) {
     return tweet;
   });
 
+  // Replies to a tweet
+  server.get<{ Querystring: { hash: string; limit?: string } }>("/replies", async (request, reply) => {
+    const hash = request.query.hash;
+    if (!hash) return reply.status(400).send({ error: "hash query parameter required" });
+    const limit = Math.min(parseInt(request.query.limit || "50", 10), 100);
+    const replies = await tweetStore.getReplies(hash, limit);
+    const count = await tweetStore.getReplyCount(hash);
+    return { replies, count };
+  });
+
   server.get<{ Querystring: { hash: string } }>("/tweet", async (request, reply) => {
     const hash = request.query.hash;
     if (!hash) return reply.status(400).send({ error: "hash query parameter required" });

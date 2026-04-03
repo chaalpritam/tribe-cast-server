@@ -79,14 +79,15 @@ class TweetStore {
   async getAllTweets(limit: number, cursor?: string) {
     const params: (string | number)[] = [limit];
     let query = `
-      SELECT hash, tid, text, parent_hash, channel_id, mentions, embeds, timestamp
-      FROM tweets WHERE deleted = false
+      SELECT t.hash, t.tid, t.text, t.parent_hash, t.channel_id, t.mentions, t.embeds, t.timestamp,
+             (SELECT COUNT(*)::int FROM tweets r WHERE r.parent_hash = t.hash AND r.deleted = false) as reply_count
+      FROM tweets t WHERE t.deleted = false
     `;
     if (cursor) {
-      query += ` AND timestamp < $2`;
+      query += ` AND t.timestamp < $2`;
       params.push(cursor);
     }
-    query += ` ORDER BY timestamp DESC LIMIT $1`;
+    query += ` ORDER BY t.timestamp DESC LIMIT $1`;
     const result = await db.query(query, params);
     return result.rows;
   }
@@ -105,6 +106,29 @@ class TweetStore {
 
     const result = await db.query(query, params);
     return result.rows;
+  }
+
+  async getReplies(parentHash: string, limit: number, cursor?: string) {
+    const params: (string | number)[] = [parentHash, limit];
+    let query = `
+      SELECT hash, tid, text, parent_hash, channel_id, mentions, embeds, timestamp
+      FROM tweets WHERE parent_hash = $1 AND deleted = false
+    `;
+    if (cursor) {
+      query += ` AND timestamp > $3`;
+      params.push(cursor);
+    }
+    query += ` ORDER BY timestamp ASC LIMIT $2`;
+    const result = await db.query(query, params);
+    return result.rows;
+  }
+
+  async getReplyCount(parentHash: string): Promise<number> {
+    const result = await db.query(
+      `SELECT COUNT(*)::int AS count FROM tweets WHERE parent_hash = $1 AND deleted = false`,
+      [parentHash]
+    );
+    return result.rows[0]?.count ?? 0;
   }
 
   async getTweetByHash(hash: string) {
