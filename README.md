@@ -1,20 +1,38 @@
-# Tribe Tweet Server
+# tribe-tweet-server
 
-HTTP server for storing and serving tweet messages (posts, replies, reactions) for [Tribe Protocol](../tribe-protocol).
+Off-chain message storage and validation server for the Tribe protocol. Receives signed protobuf messages, validates signatures against on-chain app keys, and stores tweets in PostgreSQL.
 
-In the prototype phase, this replaces the full Go/libp2p P2P network with a simple Fastify + Postgres server behind the same API contract.
+## Architecture
 
-## API
+```
+SDK / Client
+    |
+    | POST /v1/submitMessage (signed protobuf)
+    v
+tribe-tweet-server (Fastify)
+    |
+    ├── Message Validation
+    |   ├── ed25519 signature verification
+    |   ├── App key lookup from Solana (tid-registry + app-key-registry)
+    |   ├── Duplicate hash detection
+    |   └── Rate limiting (per IP)
+    |
+    └── PostgreSQL Storage
+        ├── tweets table
+        └── reactions table
+```
+
+## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/v1/submitMessage` | Submit a signed protobuf message |
-| GET | `/v1/tweetsByTid/:tid` | Paginated tweets by TID |
+| POST | `/v1/submitMessage` | Submit a signed protobuf message (`TWEET_ADD`, `TWEET_REMOVE`, `REACTION_ADD`, `REACTION_REMOVE`) |
+| GET | `/v1/tweetsByTid/:tid?cursor=&limit=` | Paginated tweets by TID |
 | GET | `/v1/tweet/:hash` | Single tweet by hash |
 | GET | `/v1/reactionsByTarget/:hash` | Reactions on a tweet |
 | GET | `/health` | Health check |
 
-## Setup
+## Getting Started
 
 ### Docker (recommended)
 
@@ -22,33 +40,81 @@ In the prototype phase, this replaces the full Go/libp2p P2P network with a simp
 docker-compose up
 ```
 
-This starts Postgres + the tweet server on port 3000.
+This starts PostgreSQL and the tweet server on port 3000.
 
 ### Manual
 
+Requires PostgreSQL 16+.
+
 ```bash
-# Start Postgres
-# Create database: tribe_tweets
-# Run migration:
-psql $DATABASE_URL -f src/storage/migrations/001_initial.sql
-
-# Install and run
+cp .env.example .env   # edit as needed
 pnpm install
-cp .env.example .env  # edit as needed
-pnpm dev
+pnpm run migrate
+pnpm run dev
 ```
-
-## Message Validation
-
-Every submitted message is validated:
-1. **ed25519 signature** verified against signer pubkey
-2. **App key lookup** -- signer must be a registered app key for the TID (cached from Solana)
-3. **Duplicate check** -- reject messages with existing hash
-4. **Rate limiting** -- per-IP limits via @fastify/rate-limit
 
 ## Configuration
 
-See `.env.example` for all configuration options.
+Copy `.env.example` to `.env` and adjust as needed.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | HTTP server port |
+| `DATABASE_URL` | — | PostgreSQL connection string |
+| `SOLANA_CLUSTER` | — | Solana cluster (e.g. `devnet`, `mainnet-beta`) |
+| `SOLANA_RPC_URL` | — | Solana JSON-RPC endpoint |
+| `RATE_LIMIT_TWEETS_PER_MIN` | `10` | Max tweet submissions per IP per minute |
+| `RATE_LIMIT_REACTIONS_PER_MIN` | `60` | Max reaction submissions per IP per minute |
+| `TID_REGISTRY_PROGRAM_ID` | — | On-chain TID registry program address |
+| `APP_KEY_REGISTRY_PROGRAM_ID` | — | On-chain app-key registry program address |
+| `MAX_TWEETS_PER_TID` | `10000` | Per-TID storage cap |
+
+## Database Schema
+
+### tweets
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `hash` | `TEXT` | Primary key |
+| `tid` | `BIGINT` | Tribe ID |
+| `text` | `TEXT` | Tweet body |
+| `parent_hash` | `TEXT` | Null for top-level tweets |
+| `channel_id` | `TEXT` | Optional channel |
+| `mentions` | `TEXT[]` | Mentioned TIDs |
+| `embeds` | `TEXT[]` | Embedded URLs |
+| `timestamp` | `BIGINT` | Client-supplied timestamp |
+| `created_at` | `TIMESTAMPTZ` | Server insert time |
+| `deleted` | `BOOLEAN` | Soft-delete flag |
+
+### reactions
+
+Stores `REACTION_ADD` and `REACTION_REMOVE` events keyed by target tweet hash.
+
+## Validation Rules
+
+- Tweet text must be at most 320 characters.
+- ed25519 signature must match a registered app key for the TID.
+- App key must be active (not revoked, not expired).
+- Duplicate hash is rejected.
+- Per-TID storage limit enforced (default 10,000 tweets).
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm run dev` | Start in development mode with hot reload |
+| `pnpm run build` | Compile TypeScript |
+| `pnpm run start` | Run compiled output |
+| `pnpm run test` | Run test suite |
+| `pnpm run migrate` | Apply database migrations |
+
+## Tech Stack
+
+- **Fastify** -- HTTP framework
+- **PostgreSQL 16** -- persistent storage
+- **Solana web3.js** -- on-chain reads for key validation
+- **tweetnacl** -- ed25519 signature verification
+- **protobufjs** -- message encoding/decoding
 
 ## Related Repos
 
