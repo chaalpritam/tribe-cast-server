@@ -76,6 +76,37 @@ class TweetStore {
     return result.rows;
   }
 
+  async getAllTweets(limit: number, cursor?: string) {
+    const params: (string | number)[] = [limit];
+    let query = `
+      SELECT hash, tid, text, parent_hash, channel_id, mentions, embeds, timestamp
+      FROM tweets WHERE deleted = false
+    `;
+    if (cursor) {
+      query += ` AND timestamp < $2`;
+      params.push(cursor);
+    }
+    query += ` ORDER BY timestamp DESC LIMIT $1`;
+    const result = await db.query(query, params);
+    return result.rows;
+  }
+
+  async getRecentTweets(limit: number, afterTimestamp?: string) {
+    const params: (string | number)[] = [limit];
+    let query = `
+      SELECT hash, tid, text, parent_hash, channel_id, mentions, embeds, timestamp
+      FROM tweets WHERE deleted = false
+    `;
+    if (afterTimestamp) {
+      query += ` AND timestamp > $2`;
+      params.push(afterTimestamp);
+    }
+    query += ` ORDER BY timestamp ASC LIMIT $1`;
+
+    const result = await db.query(query, params);
+    return result.rows;
+  }
+
   async getTweetByHash(hash: string) {
     const result = await db.query(
       `SELECT hash, tid, text, parent_hash, channel_id, mentions, embeds, timestamp
