@@ -43,6 +43,23 @@ export async function tweetRoutes(server: FastifyInstance) {
     return tweet;
   });
 
+  // Channel feed
+  server.get<{
+    Params: { channelId: string };
+    Querystring: { limit?: string; cursor?: string };
+  }>("/channel/:channelId", async (request) => {
+    const limit = Math.min(parseInt(request.query.limit || "20", 10), 100);
+    const cursor = request.query.cursor;
+    const tweets = await tweetStore.getTweetsByChannel(request.params.channelId, limit, cursor);
+    return { tweets };
+  });
+
+  // List all channels
+  server.get("/channels", async () => {
+    const channels = await tweetStore.getChannels();
+    return { channels };
+  });
+
   // Replies to a tweet
   server.get<{ Querystring: { hash: string; limit?: string } }>("/replies", async (request, reply) => {
     const hash = request.query.hash;

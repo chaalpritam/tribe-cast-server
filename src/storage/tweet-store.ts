@@ -108,6 +108,35 @@ class TweetStore {
     return result.rows;
   }
 
+  async getTweetsByChannel(channelId: string, limit: number, cursor?: string) {
+    const params: (string | number)[] = [channelId, limit];
+    let query = `
+      SELECT t.hash, t.tid, t.text, t.parent_hash, t.channel_id, t.mentions, t.embeds, t.timestamp,
+             (SELECT COUNT(*)::int FROM tweets r WHERE r.parent_hash = t.hash AND r.deleted = false) as reply_count
+      FROM tweets t WHERE t.channel_id = $1 AND t.deleted = false
+    `;
+    if (cursor) {
+      query += ` AND t.timestamp < $3`;
+      params.push(cursor);
+    }
+    query += ` ORDER BY t.timestamp DESC LIMIT $2`;
+    const result = await db.query(query, params);
+    return result.rows;
+  }
+
+  async getChannels(limit: number = 20) {
+    const result = await db.query(
+      `SELECT channel_id, COUNT(*)::int as tweet_count, MAX(timestamp) as last_active
+       FROM tweets
+       WHERE channel_id IS NOT NULL AND deleted = false
+       GROUP BY channel_id
+       ORDER BY last_active DESC
+       LIMIT $1`,
+      [limit]
+    );
+    return result.rows;
+  }
+
   async getReplies(parentHash: string, limit: number, cursor?: string) {
     const params: (string | number)[] = [parentHash, limit];
     let query = `
