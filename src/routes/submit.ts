@@ -3,6 +3,7 @@ import { SubmitMessageRequest } from "../types";
 import { validateMessage } from "../validation/message-validator";
 import { tweetStore } from "../storage/tweet-store";
 import { reactionStore } from "../storage/reaction-store";
+import { broadcast } from "./ws";
 
 // Message types (matching proto/SDK enum)
 const TWEET_ADD = 1;
@@ -80,6 +81,13 @@ export async function submitRoutes(server: FastifyInstance) {
       default:
         return reply.status(400).send({ error: `Unsupported message type: ${messageType}` });
     }
+
+    // Broadcast to WebSocket clients
+    broadcast("new_message", {
+      type: messageType,
+      hash: message.hash,
+      tid: message.data.tid,
+    });
 
     return { hash: message.hash };
   });
