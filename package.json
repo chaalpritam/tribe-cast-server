@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
+    "@fastify/multipart": "^9.4.0",
     "@fastify/rate-limit": "^10.0.0",
     "@solana/web3.js": "^1.95.0",
     "dotenv": "^16.4.0",
