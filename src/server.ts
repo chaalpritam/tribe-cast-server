@@ -9,9 +9,12 @@ export async function buildServer() {
 
   await server.register(cors, { origin: true });
 
+  // Rate limit only applies to POST routes (submissions).
+  // GET routes (reads) are not rate-limited.
   await server.register(rateLimit, {
     max: config.rateLimitTweetsPerMin,
     timeWindow: "1 minute",
+    allowList: (req) => req.method === "GET",
   });
 
   registerRoutes(server);

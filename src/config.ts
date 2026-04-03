@@ -6,7 +6,7 @@ export const config = {
   solanaRpcUrl: process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com",
   databaseUrl: process.env.DATABASE_URL || "postgresql://tribe:tribe@localhost:5432/tribe_tweets",
   maxTweetsPerTid: parseInt(process.env.MAX_TWEETS_PER_TID || "10000", 10),
-  rateLimitTweetsPerMin: parseInt(process.env.RATE_LIMIT_TWEETS_PER_MIN || "10", 10),
+  rateLimitTweetsPerMin: parseInt(process.env.RATE_LIMIT_TWEETS_PER_MIN || "30", 10),
   rateLimitReactionsPerMin: parseInt(process.env.RATE_LIMIT_REACTIONS_PER_MIN || "60", 10),
   programIds: {
     tidRegistry: process.env.TID_REGISTRY_PROGRAM_ID || "4BSmJmRGQWKgioP9DG2bUuRS9U3V6soRauU7Nv6yGvHD",
