@@ -1,7 +1,7 @@
 {
-  "name": "@tribe-protocol/cast-server",
+  "name": "@tribe-protocol/tweet-server",
   "version": "0.1.0",
-  "description": "Cast message server for Tribe Protocol",
+  "description": "Tweet message server for Tribe Protocol",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",

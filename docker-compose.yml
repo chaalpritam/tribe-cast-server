@@ -5,14 +5,14 @@ services:
     environment:
       POSTGRES_USER: tribe
       POSTGRES_PASSWORD: tribe
-      POSTGRES_DB: tribe_casts
+      POSTGRES_DB: tribe_tweets
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./src/storage/migrations:/docker-entrypoint-initdb.d
 
-  cast-server:
+  tweet-server:
     build: .
     ports:
       - "3000:3000"
@@ -20,7 +20,7 @@ services:
       PORT: 3000
       SOLANA_CLUSTER: devnet
       SOLANA_RPC_URL: https://api.devnet.solana.com
-      DATABASE_URL: postgresql://tribe:tribe@postgres:5432/tribe_casts
+      DATABASE_URL: postgresql://tribe:tribe@postgres:5432/tribe_tweets
     depends_on:
       - postgres
 

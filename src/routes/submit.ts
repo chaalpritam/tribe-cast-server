@@ -1,12 +1,12 @@
 import { FastifyInstance } from "fastify";
 import { SubmitMessageRequest } from "../types";
 import { validateMessage } from "../validation/message-validator";
-import { castStore } from "../storage/cast-store";
+import { tweetStore } from "../storage/tweet-store";
 import { reactionStore } from "../storage/reaction-store";
 
 // Message types (matching proto/SDK enum)
-const CAST_ADD = 1;
-const CAST_REMOVE = 2;
+const TWEET_ADD = 1;
+const TWEET_REMOVE = 2;
 const REACTION_ADD = 3;
 const REACTION_REMOVE = 4;
 
@@ -23,7 +23,7 @@ export async function submitRoutes(server: FastifyInstance) {
     const messageType = message.data.type;
 
     switch (messageType) {
-      case CAST_ADD: {
+      case TWEET_ADD: {
         const body = message.data.body as {
           text: string;
           mentions?: string[];
@@ -31,9 +31,9 @@ export async function submitRoutes(server: FastifyInstance) {
           parent_hash?: string;
           channel_id?: string;
         };
-        await castStore.insertCast({
+        await tweetStore.insertTweet({
           hash: message.hash,
-          fid: message.data.fid,
+          tid: message.data.tid,
           text: body.text,
           parentHash: body.parent_hash || null,
           channelId: body.channel_id || null,
@@ -44,12 +44,12 @@ export async function submitRoutes(server: FastifyInstance) {
         break;
       }
 
-      case CAST_REMOVE: {
+      case TWEET_REMOVE: {
         const body = message.data.body as { target_hash: string };
         if (!body.target_hash) {
-          return reply.status(400).send({ error: "target_hash is required for CAST_REMOVE" });
+          return reply.status(400).send({ error: "target_hash is required for TWEET_REMOVE" });
         }
-        await castStore.deleteCast(body.target_hash);
+        await tweetStore.deleteTweet(body.target_hash);
         break;
       }
 
@@ -60,7 +60,7 @@ export async function submitRoutes(server: FastifyInstance) {
         }
         await reactionStore.insertReaction({
           hash: message.hash,
-          fid: message.data.fid,
+          tid: message.data.tid,
           type: body.type,
           targetHash: body.target_hash,
           timestamp: new Date(message.data.timestamp * 1000),

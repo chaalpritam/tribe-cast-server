@@ -10,7 +10,7 @@ export async function reactionRoutes(server: FastifyInstance) {
     const limit = Math.min(parseInt(request.query.limit || "20", 10), 100);
 
     const result = await db.query(
-      `SELECT hash, fid, type, target_hash, timestamp
+      `SELECT hash, tid, type, target_hash, timestamp
        FROM reactions
        WHERE target_hash = $1 AND deleted = false
        ORDER BY timestamp DESC

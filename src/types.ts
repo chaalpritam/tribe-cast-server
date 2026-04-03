@@ -2,7 +2,7 @@ export interface SubmitMessageRequest {
   protocolVersion: number;
   data: {
     type: number;
-    fid: string; // bigint as string
+    tid: string; // bigint as string
     timestamp: number;
     network: number;
     body: Record<string, unknown>;
@@ -12,9 +12,9 @@ export interface SubmitMessageRequest {
   signer: string;     // base64
 }
 
-export interface CastRow {
+export interface TweetRow {
   hash: string;
-  fid: string;
+  tid: string;
   text: string;
   parent_hash: string | null;
   channel_id: string | null;
@@ -27,7 +27,7 @@ export interface CastRow {
 
 export interface ReactionRow {
   hash: string;
-  fid: string;
+  tid: string;
   type: number;
   target_hash: string;
   timestamp: Date;

@@ -2,7 +2,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { config } from "../config";
 
 interface CachedAppKey {
-  fid: string;
+  tid: string;
   appPubkey: string;
   scope: number;
   revoked: boolean;
@@ -13,10 +13,10 @@ interface CachedAppKey {
 const TTL_MS = 60_000; // 60 second cache TTL
 
 // Anchor account layout for AppKeyRecord after 8-byte discriminator:
-// u64 fid (8) + Pubkey app_pubkey (32) + u8 scope (1) + i64 created_at (8) + i64 expires_at (8) + bool revoked (1) + u8 bump (1)
+// u64 tid (8) + Pubkey app_pubkey (32) + u8 scope (1) + i64 created_at (8) + i64 expires_at (8) + bool revoked (1) + u8 bump (1)
 const DISCRIMINATOR_LEN = 8;
-const FID_OFFSET = DISCRIMINATOR_LEN;
-const SCOPE_OFFSET = FID_OFFSET + 8 + 32; // after fid + app_pubkey
+const TID_OFFSET = DISCRIMINATOR_LEN;
+const SCOPE_OFFSET = TID_OFFSET + 8 + 32; // after tid + app_pubkey
 const EXPIRES_AT_OFFSET = SCOPE_OFFSET + 1 + 8; // after scope + created_at
 const REVOKED_OFFSET = EXPIRES_AT_OFFSET + 8;
 const MIN_ACCOUNT_LEN = REVOKED_OFFSET + 1;
@@ -34,10 +34,10 @@ class AppKeyCache {
   }
 
   /**
-   * Check if a signer is a valid (active, non-revoked) app key for an FID.
+   * Check if a signer is a valid (active, non-revoked) app key for a TID.
    */
-  async isValid(fid: string, signerHex: string): Promise<boolean> {
-    const key = `${fid}:${signerHex}`;
+  async isValid(tid: string, signerHex: string): Promise<boolean> {
+    const key = `${tid}:${signerHex}`;
     const cached = this.cache.get(key);
 
     // Return from cache if fresh.
@@ -46,7 +46,7 @@ class AppKeyCache {
     }
 
     // Cache miss — fetch from Solana.
-    const record = await this.fetchFromChain(fid, signerHex);
+    const record = await this.fetchFromChain(tid, signerHex);
     if (!record) return false;
 
     this.cache.set(key, { ...record, cachedAt: Date.now() });
@@ -56,14 +56,14 @@ class AppKeyCache {
   /**
    * Fetch an app key record from on-chain and deserialize Anchor account data.
    */
-  private async fetchFromChain(fid: string, signerHex: string): Promise<CachedAppKey | null> {
+  private async fetchFromChain(tid: string, signerHex: string): Promise<CachedAppKey | null> {
     try {
-      const fidBuffer = Buffer.alloc(8);
-      fidBuffer.writeBigUInt64LE(BigInt(fid));
+      const tidBuffer = Buffer.alloc(8);
+      tidBuffer.writeBigUInt64LE(BigInt(tid));
       const signerPubkey = new PublicKey(Buffer.from(signerHex, "hex"));
 
       const [pda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("app_key"), fidBuffer, signerPubkey.toBuffer()],
+        [Buffer.from("app_key"), tidBuffer, signerPubkey.toBuffer()],
         new PublicKey(config.programIds.appKeyRegistry)
       );
 
@@ -76,7 +76,7 @@ class AppKeyCache {
       const revoked = data[REVOKED_OFFSET] !== 0;
 
       return {
-        fid,
+        tid,
         appPubkey: signerHex,
         scope,
         revoked,
@@ -91,8 +91,8 @@ class AppKeyCache {
   /**
    * Invalidate a specific key (called on revoke events).
    */
-  invalidate(fid: string, signerHex: string): void {
-    this.cache.delete(`${fid}:${signerHex}`);
+  invalidate(tid: string, signerHex: string): void {
+    this.cache.delete(`${tid}:${signerHex}`);
   }
 
   /**

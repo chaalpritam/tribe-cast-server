@@ -7,7 +7,7 @@ export async function buildServer() {
   const server = Fastify({ logger: true });
 
   await server.register(rateLimit, {
-    max: config.rateLimitCastsPerMin,
+    max: config.rateLimitTweetsPerMin,
     timeWindow: "1 minute",
   });
 
