@@ -9,12 +9,22 @@ export async function buildServer() {
 
   await server.register(cors, { origin: true });
 
-  // Rate limit only applies to POST routes (submissions).
-  // GET routes (reads) are not rate-limited.
+  // Rate limit all endpoints. POST has stricter limits via per-route overrides.
   await server.register(rateLimit, {
-    max: config.rateLimitTweetsPerMin,
+    max: 200,
     timeWindow: "1 minute",
-    allowList: (req) => req.method === "GET",
+    keyGenerator: (req) => req.ip,
+  });
+
+  // Stricter rate limit for POST (message submissions)
+  server.addHook("onRoute", (routeOptions) => {
+    if (routeOptions.method === "POST" || (Array.isArray(routeOptions.method) && routeOptions.method.includes("POST"))) {
+      const existingConfig = routeOptions.config ?? {};
+      routeOptions.config = {
+        ...existingConfig,
+        rateLimit: { max: config.rateLimitTweetsPerMin, timeWindow: "1 minute" },
+      };
+    }
   });
 
   registerRoutes(server);

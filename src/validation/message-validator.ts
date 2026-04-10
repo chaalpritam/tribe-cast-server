@@ -4,6 +4,7 @@ import { appKeyCache } from "./app-key-cache";
 import { tweetStore } from "../storage/tweet-store";
 
 const MAX_TWEET_TEXT_LENGTH = 320;
+const MAX_TIMESTAMP_DRIFT_SECONDS = 300; // 5 minutes
 
 interface ValidationResult {
   valid: boolean;
@@ -37,7 +38,13 @@ export async function validateMessage(message: SubmitMessageRequest): Promise<Va
     return { valid: false, error: "Signer is not a valid app key for this TID" };
   }
 
-  // 4. Check for duplicate hash.
+  // 4. Validate timestamp is within acceptable range.
+  const now = Math.floor(Date.now() / 1000);
+  if (Math.abs(now - message.data.timestamp) > MAX_TIMESTAMP_DRIFT_SECONDS) {
+    return { valid: false, error: "Timestamp out of acceptable range" };
+  }
+
+  // 5. Check for duplicate hash.
   const duplicate = await tweetStore.hashExists(message.hash);
   if (duplicate) {
     return { valid: false, error: "Duplicate message hash" };

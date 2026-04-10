@@ -49,6 +49,7 @@ export async function tweetRoutes(server: FastifyInstance) {
   }>("/search", async (request, reply) => {
     const q = request.query.q;
     if (!q || q.length < 2) return reply.status(400).send({ error: "Query must be at least 2 characters" });
+    if (q.length > 200) return reply.status(400).send({ error: "Query too long" });
     const limit = Math.min(parseInt(request.query.limit || "20", 10), 100);
     const tweets = await tweetStore.searchTweets(q, limit);
     return { tweets, query: q };
