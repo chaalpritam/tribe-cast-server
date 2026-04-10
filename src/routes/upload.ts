@@ -1,13 +1,9 @@
 import { FastifyInstance } from "fastify";
 import multipart from "@fastify/multipart";
-import { createHash } from "crypto";
+import { mediaStore } from "../storage/media-store";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-
-// Simple local storage for uploaded files.
-// In production, replace with IPFS pinning (Pinata, web3.storage) or Arweave.
-const uploads = new Map<string, { data: Buffer; contentType: string; createdAt: Date }>();
 
 export async function uploadRoutes(server: FastifyInstance) {
   await server.register(multipart, {
@@ -37,32 +33,38 @@ export async function uploadRoutes(server: FastifyInstance) {
       return reply.status(400).send({ error: "File too large (max 5MB)" });
     }
 
-    // Content-addressed: SHA-256 hash of the file data
-    const hash = createHash("sha256").update(data).digest("hex");
-
-    uploads.set(hash, {
-      data,
-      contentType: file.mimetype,
-      createdAt: new Date(),
-    });
+    const result = await mediaStore.store(data, file.mimetype);
 
     return {
-      hash,
-      url: `/v1/media/${hash}`,
+      hash: result.hash,
+      url: `/v1/media/${result.hash}`,
       contentType: file.mimetype,
       size: data.length,
+      ...(result.ipfsCid ? { ipfsCid: result.ipfsCid, ipfsUrl: mediaStore.getIpfsUrl(result.hash) } : {}),
     };
   });
 
   // Serve uploaded media by hash
   server.get<{ Params: { hash: string } }>("/media/:hash", async (request, reply) => {
-    const upload = uploads.get(request.params.hash);
-    if (!upload) {
+    const hash = request.params.hash;
+
+    // Validate hash format (SHA-256 hex = 64 chars)
+    if (!/^[a-f0-9]{64}$/.test(hash)) {
+      return reply.status(400).send({ error: "Invalid hash format" });
+    }
+
+    const media = mediaStore.retrieve(hash);
+    if (!media) {
+      // If IPFS is configured and file not local, redirect to IPFS gateway
+      const ipfsUrl = mediaStore.getIpfsUrl(hash);
+      if (ipfsUrl) {
+        return reply.redirect(ipfsUrl);
+      }
       return reply.status(404).send({ error: "Media not found" });
     }
 
-    reply.header("Content-Type", upload.contentType);
+    reply.header("Content-Type", media.contentType);
     reply.header("Cache-Control", "public, max-age=31536000, immutable");
-    return reply.send(upload.data);
+    return reply.send(media.data);
   });
 }
