@@ -1,8 +1,10 @@
-# tribe-tweet-server
+# tribe-cast-server
 
-> **DEPRECATED** — This functionality has been merged into [tribe-hub](https://github.com/chaalpritam/tribe-hub). The hub now handles tweet storage, signature validation, and gossip peer sync in a single service. This repo is kept for reference only.
+> **DEPRECATED** — This functionality has been merged into [tribe-hub](https://github.com/chaalpritam/tribe-hub). The hub now handles message storage, signature validation, and gossip peer sync in a single service. This repo is kept for reference only.
 
-Off-chain message storage and validation server for the Tribe protocol. Receives signed protobuf messages, validates signatures against on-chain app keys, and stores tweets in PostgreSQL.
+GitHub: [chaalpritam/tribe-cast-server](https://github.com/chaalpritam/tribe-cast-server)
+
+Off-chain message storage and validation server for the Tribe protocol. Receives signed protobuf messages, validates signatures against on-chain app keys, and stores casts/messages in PostgreSQL.
 
 ## Architecture
 
@@ -11,7 +13,7 @@ SDK / Client
     |
     | POST /v1/submitMessage (signed protobuf)
     v
-tribe-tweet-server (Fastify)
+tribe-cast-server (Fastify)
     |
     ├── Message Validation
     |   ├── ed25519 signature verification
